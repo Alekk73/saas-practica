@@ -7,7 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
-  app.enableShutdownHooks();
+  app.enableShutdownHooks(); // Permite realizar un apagado controlado (en este caso para la DB)
 
   app.useGlobalPipes(
     new ValidationPipe({
