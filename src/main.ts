@@ -17,7 +17,9 @@ async function bootstrap() {
     }),
   );
 
-  const port = config.get('PORT');
+  const port = config.get<number>('PORT');
   await app.listen(port ?? 3000);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  console.error(err);
+});
