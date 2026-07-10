@@ -11,8 +11,11 @@ export class UsersService {
   async create(
     data: CreateUserDto,
     tx: PrismaClientOrTx = this.prisma,
-  ): Promise<User> {
-    return await tx.user.create({ data });
+  ): Promise<Omit<User, 'password_hash'>> {
+    const newUser = await tx.user.create({ data });
+    const { password_hash: _password_hash, ...userWithoutPassword } = newUser;
+
+    return userWithoutPassword;
   }
 
   findAll() {
@@ -32,6 +35,8 @@ export class UsersService {
     email: string,
     tx: PrismaClientOrTx = this.prisma,
   ): Promise<User | null> {
-    return tx.user.findUnique({ where: { email } });
+    return tx.user.findUnique({
+      where: { email },
+    });
   }
 }
