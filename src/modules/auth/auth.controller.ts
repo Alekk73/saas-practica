@@ -22,7 +22,6 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const isProduction = process.env.NODE_ENV === 'production';
-    console.log(isProduction);
     const { accessToken, user } = await this.authService.login(body);
 
     res.cookie('access_token', accessToken, {
