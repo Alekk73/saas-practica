@@ -12,7 +12,6 @@ model Tenant {
   id            String               @id             @default(uuid())
   name          String               @unique
   users         User[]
-  invitations   Invitation[]
   subscriptions SubscriptionTenant[]
   created_at    DateTime             @default(now()) @db.Timestamptz(6)
   updated_at    DateTime             @updatedAt      @db.Timestamptz(6)
@@ -29,30 +28,11 @@ model User {
   email            String       @unique
   password_hash    String
   role             UserRole     @default(USER)
-  sentInvitations  Invitation[] @relation("SentInvitations")
-  guestInvitations Invitation[] @relation("GuestInvitations")
   created_at       DateTime     @default(now()) @db.Timestamptz(6)
   updated_at       DateTime     @updatedAt      @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@map("users")
-}
-
-model Invitation {
-  id         String   @id @default(uuid())
-  sender_id  String
-  sender     User     @relation("SentInvitations", fields: [sender_id], references: [id])
-  guest_id   String
-  guest      User     @relation("GuestInvitations", fields: [guest_id], references: [id])
-  tenant_id  String
-  tenant     Tenant   @relation(fields: [tenant_id], references: [id])
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @updatedAt      @db.Timestamptz(6)
-
-  @@index([sender_id])
-  @@index([guest_id])
-  @@index([tenant_id])
-  @@map("invitations")
 }
 
 model Subscription {
