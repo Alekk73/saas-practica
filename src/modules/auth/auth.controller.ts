@@ -1,9 +1,10 @@
-import { Controller, Post, Body, Res } from '@nestjs/common';
+import { Controller, Post, Body, Res, Headers } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterRequestDto } from './dto/register-request.dto';
 import { LoginDto } from './dto/login.dto';
 import { Response } from 'express';
 import { Public } from 'src/shared/decorators/public.decorator';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -11,8 +12,17 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  create(@Body() body: RegisterRequestDto) {
+  register(@Body() body: RegisterRequestDto) {
     return this.authService.register(body.user, body.tenant);
+  }
+
+  @Public()
+  @Post('register-user')
+  registerUserForTenant(
+    @Body() userData: RegisterDto,
+    @Headers('tenant-invitation-token') token: string,
+  ) {
+    return this.authService.registerUserForTenant(userData, token);
   }
 
   @Public()

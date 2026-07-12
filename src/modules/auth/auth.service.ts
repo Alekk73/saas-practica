@@ -10,17 +10,22 @@ import { PrismaService } from 'prisma/prisma.service';
 import { CreateTenantDto } from '../tenants/dto/create-tenant.dto';
 import { TenantsService } from '../tenants/tenants.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
-import { UserRole } from 'generated/prisma_client/enums';
+import { InvitationStatus, UserRole } from 'generated/prisma_client/enums';
 import { LoginDto } from './dto/login.dto';
-import { generateToken } from './utils/jwt';
+import { generateToken } from '../../shared/utils/jwt';
+import { JwtService } from '@nestjs/jwt';
+import { JwtPayloadInviteToTenant } from 'src/shared/interfaces/jwt-payload.interface';
+import { TenantInvitationsService } from '../tenant-invitations/tenant-invitations.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
+    private jwtService: JwtService,
 
     private readonly userService: UsersService,
     private readonly tenantService: TenantsService,
+    private readonly tenantInvitationService: TenantInvitationsService,
   ) {}
 
   async register(userData: RegisterDto, tenantData: CreateTenantDto) {
@@ -58,6 +63,38 @@ export class AuthService {
     return result;
   }
 
+  async registerUserForTenant(data: RegisterDto, token: string) {
+    const mailInUse = await this.userService.findByEmail(data.email);
+    if (mailInUse) throw new BadRequestException('Mail in use');
+
+    const hashPassword = await bcrypt.hash(
+      data.password,
+      Number(process.env.HASH_SALT),
+    );
+
+    const decodeToken: JwtPayloadInviteToTenant =
+      await this.jwtService.decode(token);
+
+    const tenant = await this.tenantService.findOne(decodeToken.tenant_id);
+
+    const dataUser = {
+      name: data.name,
+      lastname: data.lastname,
+      email: data.email,
+      password_hash: hashPassword,
+      tenant_id: tenant.id,
+      role: decodeToken.role,
+    };
+
+    const newUser = await this.userService.create(dataUser);
+
+    await this.tenantInvitationService.update(decodeToken.invitation_id, {
+      status: InvitationStatus.ACCEPTED,
+    });
+
+    return newUser;
+  }
+
   async login(userData: LoginDto) {
     const user = await this.userService.findByEmail(userData.email);
     if (!user) throw new NotFoundException('User not found');
@@ -65,12 +102,16 @@ export class AuthService {
     const isMatch = await bcrypt.compare(userData.password, user.password_hash);
     if (!isMatch) throw new BadRequestException('Credentials invalid');
 
-    const token = generateToken({
-      sub: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    });
+    const token = generateToken(
+      {
+        sub: user.id,
+        name: user.name,
+        email: user.email,
+        tenant_id: user.tenant_id,
+        role: user.role,
+      },
+      { expiresIn: '1h' },
+    );
 
     const { password_hash: _pass, ...restUserData } = user;
 

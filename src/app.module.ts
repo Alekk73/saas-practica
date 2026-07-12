@@ -7,6 +7,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { AuthGuard } from './modules/auth/guards/auth.guard';
+import { TenantInvitationsModule } from './modules/tenant-invitations/tenant-invitations.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { AuthGuard } from './modules/auth/guards/auth.guard';
     UsersModule,
     AuthModule,
     TenantsModule,
+    TenantInvitationsModule,
+    MailModule,
   ],
   providers: [
     {

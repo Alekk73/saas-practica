@@ -6,12 +6,14 @@ import { UsersModule } from '../users/users.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TenantInvitationsModule } from '../tenant-invitations/tenant-invitations.module';
 
 @Module({
   imports: [
     PrismaModule,
     UsersModule,
     TenantsModule,
+    TenantInvitationsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

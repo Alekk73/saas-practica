@@ -4,9 +4,10 @@ declare global {
   namespace Express {
     interface Request {
       user: {
-        id: string;
+        sub: string;
         name: string;
         email: string;
+        tenant_id: string;
         role: UserRole;
       };
     }

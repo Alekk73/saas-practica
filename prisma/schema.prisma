@@ -13,6 +13,7 @@ model Tenant {
   name          String               @unique
   users         User[]
   subscriptions SubscriptionTenant[]
+  invitations   TenantInvitations[]
   created_at    DateTime             @default(now()) @db.Timestamptz(6)
   updated_at    DateTime             @updatedAt      @db.Timestamptz(6)
 
@@ -20,16 +21,17 @@ model Tenant {
 }
 
 model User {
-  id               String       @id @default(uuid())
-  tenant_id        String
-  tenant           Tenant       @relation(fields: [tenant_id], references: [id])
-  name             String
-  lastname         String
-  email            String       @unique
-  password_hash    String
-  role             UserRole     @default(USER)
-  created_at       DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime     @updatedAt      @db.Timestamptz(6)
+  id              String              @id @default(uuid())
+  tenant_id       String
+  tenant          Tenant              @relation(fields: [tenant_id], references: [id])
+  name            String
+  lastname        String
+  email           String              @unique
+  password_hash   String
+  role            UserRole            @default(USER)
+  sentInvitations TenantInvitations[] @relation("SentInvitations")
+  created_at      DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime            @updatedAt      @db.Timestamptz(6)
 
   @@index([tenant_id])
   @@map("users")
@@ -56,6 +58,24 @@ model SubscriptionTenant {
   @@map("subscriptions_tenants")
 }
 
+model TenantInvitations {
+  id         String           @id @default(uuid())
+  sender_id  String
+  sender     User             @relation("SentInvitations", fields: [sender_id], references: [id])
+  email      String
+  tenant_id  String
+  tenant     Tenant           @relation(fields: [tenant_id], references: [id])
+  role       UserRole
+  status     InvitationStatus @default(PENDING)
+  created_at DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at DateTime         @updatedAt      @db.Timestamptz(6)
+
+  @@index([sender_id])
+  @@index([email])
+  @@index([tenant_id])
+  @@map("tenant_invitations")
+}
+
 enum UserRole {
   ADMIN @map("admin")
   USER  @map("user")
@@ -68,4 +88,12 @@ enum SubscriptionType {
   COMMERCE @map("commerce")
 
   @@map("subscription_types")
+}
+
+enum InvitationStatus {
+  ACCEPTED @map("accepted")
+  REJECTED @map("rejected")
+  PENDING  @map("pending")
+
+  @@map("invitation_status ")
 }

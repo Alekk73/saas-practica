@@ -8,8 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { User } from 'generated/prisma_client/client';
-import { NotFoundError } from 'rxjs';
+import { TenantsService } from 'src/modules/tenants/tenants.service';
 import { UsersService } from 'src/modules/users/users.service';
 import { IS_PUBLIC_KEY } from 'src/shared/decorators/public.decorator';
 import { JwtPayload } from 'src/shared/interfaces/jwt-payload.interface';
@@ -20,6 +19,7 @@ export class AuthGuard implements CanActivate {
     private reflector: Reflector,
 
     private readonly userService: UsersService,
+    private readonly tenantService: TenantsService,
     private jwtService: JwtService,
   ) {}
 
@@ -46,22 +46,14 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Token has expired');
     }
 
-    let existUser: User | null = null;
-
-    try {
-      existUser = await this.userService.findByEmail(payload.email);
-    } catch (err) {
-      if (!(err instanceof NotFoundError)) {
-        throw err;
-      }
-    }
-
+    const existUser = await this.userService.findByEmail(payload.email);
     if (!existUser) throw new NotFoundException('User not found');
 
-    const userData = {
-      id: existUser.id,
+    const userData: JwtPayload = {
+      sub: existUser.id,
       name: existUser.name,
       email: existUser.email,
+      tenant_id: existUser.tenant_id,
       role: existUser.role,
     };
 
