@@ -12,9 +12,11 @@ import { TenantsService } from '../tenants/tenants.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { InvitationStatus, UserRole } from 'generated/prisma_client/enums';
 import { LoginDto } from './dto/login.dto';
-import { generateToken } from '../../shared/utils/jwt';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayloadInviteToTenant } from 'src/shared/interfaces/jwt-payload.interface';
+import {
+  JwtPayload,
+  JwtPayloadInviteToTenant,
+} from 'src/shared/interfaces/jwt-payload.interface';
 import { TenantInvitationsService } from '../tenant-invitations/tenant-invitations.service';
 
 @Injectable()
@@ -72,8 +74,8 @@ export class AuthService {
       Number(process.env.HASH_SALT),
     );
 
-    const decodeToken: JwtPayloadInviteToTenant =
-      await this.jwtService.decode(token);
+    const decodeToken =
+      await this.jwtService.verifyAsync<JwtPayloadInviteToTenant>(token);
 
     const tenant = await this.tenantService.findOne(decodeToken.tenant_id);
 
@@ -102,16 +104,15 @@ export class AuthService {
     const isMatch = await bcrypt.compare(userData.password, user.password_hash);
     if (!isMatch) throw new BadRequestException('Credentials invalid');
 
-    const token = generateToken(
-      {
-        sub: user.id,
-        name: user.name,
-        email: user.email,
-        tenant_id: user.tenant_id,
-        role: user.role,
-      },
-      { expiresIn: '1h' },
-    );
+    const payload: JwtPayload = {
+      sub: user.id,
+      name: user.name,
+      email: user.email,
+      tenant_id: user.tenant_id,
+      role: user.role,
+    };
+
+    const token = await this.jwtService.signAsync(payload);
 
     const { password_hash: _pass, ...restUserData } = user;
 

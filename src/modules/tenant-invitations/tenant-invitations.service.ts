@@ -10,15 +10,16 @@ import {
   JwtPayloadInviteToTenant,
 } from 'src/shared/interfaces/jwt-payload.interface';
 import { TenantsService } from '../tenants/tenants.service';
-import { generateToken } from 'src/shared/utils/jwt';
 import { PrismaService } from 'prisma/prisma.service';
 import { InvitationStatus } from 'generated/prisma_client/enums';
 import { TenantInvitations } from 'generated/prisma_client/client';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class TenantInvitationsService {
   constructor(
     private prisma: PrismaService,
+    private jwtService: JwtService,
 
     private readonly mailService: MailProvider,
     private readonly tenantService: TenantsService,
@@ -58,7 +59,9 @@ export class TenantInvitationsService {
       invitedBy: senderData.name,
     };
 
-    const tokenInvitation = generateToken(payload, { expiresIn: '7d' });
+    const tokenInvitation = await this.jwtService.signAsync(payload, {
+      expiresIn: '7d',
+    });
 
     const data = {
       email: createTenantInvitationDto.email,
