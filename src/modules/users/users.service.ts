@@ -18,8 +18,9 @@ export class UsersService {
     return userWithoutPassword;
   }
 
-  findAll() {
+  findAllByTenant(tenantId: string) {
     return this.prisma.user.findMany({
+      where: { tenant_id: tenantId },
       select: {
         id: true,
         tenant: true,
