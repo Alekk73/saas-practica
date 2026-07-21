@@ -45,10 +45,15 @@ export class TenantInvitationsService {
         },
       });
 
-      if (findInvitationGuest?.status === InvitationStatus.PENDING) {
-        throw new BadRequestException('Existing pending invitation');
-      } else if (findInvitationGuest?.status === InvitationStatus.ACCEPTED) {
+      if (findInvitationGuest?.status === InvitationStatus.ACCEPTED) {
         throw new BadRequestException('Invitation already accepted');
+      }
+
+      if (
+        findInvitationGuest?.status === InvitationStatus.PENDING &&
+        findInvitationGuest.expires_at > new Date()
+      ) {
+        throw new BadRequestException('Existing pending invitation');
       }
 
       return tx.tenantInvitations.create({
