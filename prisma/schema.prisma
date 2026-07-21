@@ -93,7 +93,7 @@ enum SubscriptionType {
 
 enum InvitationStatus {
   ACCEPTED @map("accepted")
-  REJECTED @map("rejected")
+  EXPIRED  @map("expired")
   PENDING  @map("pending")
 
   @@map("invitation_status ")

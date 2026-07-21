@@ -30,25 +30,37 @@ export class TenantInvitationsService {
     createTenantInvitationDto: CreateTenantInvitationDto,
   ) {
     const tenant = await this.tenantService.findOne(senderData.tenant_id);
-    const findInvitationGuest = await this.prisma.tenantInvitations.findFirst({
-      where: {
-        tenant_id: tenant.id,
-        email: createTenantInvitationDto.email,
-        status: InvitationStatus.PENDING,
-      },
-    });
 
-    if (findInvitationGuest)
-      throw new BadRequestException('Existing pending invitation');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-    const invitation = await this.prisma.tenantInvitations.create({
-      data: {
-        sender_id: senderData.sub,
-        email: createTenantInvitationDto.email,
-        tenant_id: tenant.id,
-        role: createTenantInvitationDto.role,
-        status: InvitationStatus.PENDING,
-      },
+    const invitation = await this.prisma.$transaction(async (tx) => {
+      const findInvitationGuest = await tx.tenantInvitations.findFirst({
+        where: {
+          tenant_id: tenant.id,
+          email: createTenantInvitationDto.email,
+          status: {
+            in: [InvitationStatus.ACCEPTED, InvitationStatus.PENDING],
+          },
+        },
+      });
+
+      if (findInvitationGuest?.status === InvitationStatus.PENDING) {
+        throw new BadRequestException('Existing pending invitation');
+      } else if (findInvitationGuest?.status === InvitationStatus.ACCEPTED) {
+        throw new BadRequestException('Invitation already accepted');
+      }
+
+      return tx.tenantInvitations.create({
+        data: {
+          sender_id: senderData.sub,
+          email: createTenantInvitationDto.email,
+          tenant_id: tenant.id,
+          role: createTenantInvitationDto.role,
+          status: InvitationStatus.PENDING,
+          expires_at: expiresAt,
+        },
+      });
     });
 
     const payload: JwtPayloadInviteToTenant = {
@@ -63,16 +75,14 @@ export class TenantInvitationsService {
       expiresIn: '7d',
     });
 
-    const data = {
-      email: createTenantInvitationDto.email,
-      name: createTenantInvitationDto.name,
-      role: createTenantInvitationDto.role,
-      companyName: tenant.name,
-      token: tokenInvitation,
-    };
-
     await this.mailService.sendMail(
-      data,
+      {
+        email: createTenantInvitationDto.email,
+        name: createTenantInvitationDto.name,
+        role: createTenantInvitationDto.role,
+        companyName: tenant.name,
+        token: tokenInvitation,
+      },
       `User Registration Login to ${tenant.name}`,
     );
 
@@ -94,15 +104,30 @@ export class TenantInvitationsService {
     return invitation;
   }
 
-  async verifyInvitation(invitationId: string): Promise<boolean> {
+  async verifyInvitation(token: string): Promise<boolean> {
+    const decodeToken =
+      await this.jwtService.verifyAsync<JwtPayloadInviteToTenant>(token);
+
     const existInvitation = await this.prisma.tenantInvitations.findFirst({
-      where: { id: invitationId },
+      where: {
+        id: decodeToken.invitation_id,
+        status: InvitationStatus.PENDING,
+      },
     });
+
     if (!existInvitation) throw new NotFoundException('Invitation not found');
+
+    if (new Date() > existInvitation.expires_at) {
+      await this.update(existInvitation.id, {
+        status: InvitationStatus.EXPIRED,
+      });
+      throw new BadRequestException('Invitation expired');
+    }
 
     return true;
   }
 
+  // Mejorar metodo, para limitar a futuro que campos se pueden actualizar
   async update(id: string, data: Partial<TenantInvitations>) {
     return await this.prisma.tenantInvitations.update({
       where: {
