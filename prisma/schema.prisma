@@ -68,6 +68,7 @@ model TenantInvitations {
   role       UserRole
   status     InvitationStatus @default(PENDING)
   created_at DateTime         @default(now()) @db.Timestamptz(6)
+  expires_at DateTime                         @db.Timestamptz(6)
   updated_at DateTime         @updatedAt      @db.Timestamptz(6)
 
   @@index([sender_id])
